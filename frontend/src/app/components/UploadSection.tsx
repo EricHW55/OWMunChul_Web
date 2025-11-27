@@ -1,4 +1,4 @@
-// src/components/UploadSection.tsx
+// app/components/UploadSection.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -22,7 +22,6 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
 
         setSelectedFile(file);
         onError(null);
-        onResult as any; // 결과 초기화는 부모에서 처리
 
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -33,7 +32,7 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
 
     const handleUpload = async () => {
         if (!selectedFile) {
-            onError('Please select an image first');
+            onError('이미지를 먼저 선택해주세요');
             return;
         }
 
@@ -44,24 +43,22 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
             const data = await predictFromImage(selectedFile);
             onResult(data);
         } catch (err) {
-            onError((err as Error).message || 'Failed to process image');
+            onError((err as Error).message || '이미지 처리 실패');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="bg-slate-800/50 backdrop-blur rounded-2xl shadow-2xl p-6 mb-8 border border-slate-700">
             <div className="flex flex-col items-center gap-4">
                 <label className="w-full cursor-pointer">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-indigo-500 transition text-center">
-                        <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                        <div className="text-gray-600 mb-2">
-                            {selectedFile
-                                ? selectedFile.name
-                                : 'Click to upload or drag and drop'}
+                    <div className="border-2 border-dashed border-slate-600 rounded-xl p-8 hover:border-orange-400 transition-all text-center bg-slate-900/30">
+                        <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                        <div className="text-slate-300 mb-2 font-medium">
+                            {selectedFile ? selectedFile.name : '클릭하거나 드래그하여 업로드'}
                         </div>
-                        <div className="text-sm text-gray-400">PNG, JPG up to 10MB</div>
+                        <div className="text-sm text-slate-500">PNG, JPG 최대 10MB</div>
                     </div>
                     <input
                         type="file"
@@ -72,11 +69,11 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
                 </label>
 
                 {preview && (
-                    <div className="w-full">
+                    <div className="w-full max-w-2xl">
                         <img
                             src={preview}
                             alt="Preview"
-                            className="max-h-64 mx-auto rounded-lg shadow-md"
+                            className="w-full h-auto max-h-80 object-contain mx-auto rounded-lg shadow-lg border border-slate-700"
                         />
                     </div>
                 )}
@@ -84,12 +81,12 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
                 <button
                     onClick={handleUpload}
                     disabled={!selectedFile || loading}
-                    className="px-8 py-3 bg-indigo-600 text-white rounded-lg font-semibold
-                     hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed
-                     transition flex items-center gap-2"
+                    className="px-8 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-bold text-lg
+                   hover:from-orange-600 hover:to-orange-700 disabled:from-slate-600 disabled:to-slate-700
+                   disabled:cursor-not-allowed transition-all shadow-lg flex items-center gap-2"
                 >
                     <BarChart3 className="w-5 h-5" />
-                    {loading ? 'Processing...' : 'Analyze'}
+                    {loading ? '분석 중...' : '분석 시작'}
                 </button>
             </div>
         </div>
