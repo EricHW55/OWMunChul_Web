@@ -3,12 +3,9 @@
 import os
 import cv2
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import onnxruntime as ort
 
 from crop_coordinates_1k import OWScoreboardCropper
-
 
 # ====== 하이퍼파라미터 ====== #
 MAX_LEN = 5
@@ -19,74 +16,66 @@ TARGET_H = 32
 TARGET_W = 128
 
 
-# ====== CNN 모델 ====== #
-class ScoreNumberNet(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-        )
-        conv_out_h = TARGET_H // 8
-        conv_out_w = TARGET_W // 8
-        conv_dim = 128 * conv_out_h * conv_out_w
-
-        self.fc = nn.Sequential(
-            nn.Linear(conv_dim, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(256, MAX_LEN * NUM_CLASSES),
-        )
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = x.flatten(1)
-        x = self.fc(x)
-        return x.view(-1, MAX_LEN, NUM_CLASSES)
+# ====== (참고용) 원래 CNN 구조 ====== #
+# ONNX 추론만 쓸 거라, 실제 서버 코드에서는 이 클래스를 안 써도 되지만
+# 모델 구조를 기록해두는 용도로 남겨둬도 됨.
+# 필요 없으면 통째로 삭제해도 무방.
+#
+# class ScoreNumberNet(nn.Module):
+#     ...
 
 
-# ====== 전처리 ====== #
-def preprocess_crop_to_tensor(crop):
+# ====== 전처리 (ONNX 입력용) ====== #
+def preprocess_crop_to_input(crop: np.ndarray) -> np.ndarray:
+    """
+    crop: BGR 이미지 (H, W, 3)
+    return: (1, 1, TARGET_H, TARGET_W) float32 numpy 배열
+    """
     if crop is None or crop.size == 0:
         raise RuntimeError("Empty crop")
 
     gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape
 
+    # 세로 크기를 TARGET_H에 맞추고 가로는 비율 유지
     scale = TARGET_H / float(h)
     new_w = max(1, int(w * scale))
 
     interp = cv2.INTER_CUBIC if scale > 1.0 else cv2.INTER_AREA
     resized = cv2.resize(gray, (new_w, TARGET_H), interpolation=interp)
 
+    # 가로가 TARGET_W보다 크면 줄이고, 작으면 양쪽 패딩
     if new_w > TARGET_W:
-        resized = cv2.resize(resized, (TARGET_W, TARGET_H), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(resized, (TARGET_W, TARGET_H),
+                             interpolation=cv2.INTER_AREA)
     else:
         pad_left = (TARGET_W - new_w) // 2
         pad_right = TARGET_W - new_w - pad_left
-        resized = cv2.copyMakeBorder(resized, 0, 0, pad_left, pad_right,
-                                     borderType=cv2.BORDER_CONSTANT,
-                                     value=0)
+        resized = cv2.copyMakeBorder(
+            resized, 0, 0, pad_left, pad_right,
+            borderType=cv2.BORDER_CONSTANT,
+            value=0
+        )
 
+    # [0, 255] -> [0, 1]
     resized = resized.astype(np.float32) / 255.0
-    return torch.from_numpy(resized[None, None])
+
+    # (H, W) -> (1, 1, H, W)
+    return resized[None, None, :, :]
 
 
-# ====== 디코더 ====== #
-def decode_digits(logits):
-    preds = logits.softmax(-1).argmax(-1)[0].tolist()
+# ====== 디코더 (numpy 버전) ====== #
+def decode_digits(logits: np.ndarray) -> int:
+    """
+    logits: (1, MAX_LEN, NUM_CLASSES) 형태의 numpy 배열이라고 가정
+    """
+    # 안정적인 softmax
+    # shape: (1, MAX_LEN, NUM_CLASSES)
+    logits_max = logits.max(axis=-1, keepdims=True)
+    exp = np.exp(logits - logits_max)
+    probs = exp / exp.sum(axis=-1, keepdims=True)
+
+    preds = probs.argmax(axis=-1)[0].tolist()  # 첫 배치만 사용
 
     digits = [str(p) for p in preds if p != BLANK]
     if not digits:
@@ -94,47 +83,67 @@ def decode_digits(logits):
 
     try:
         return int("".join(digits))
-    except:
+    except Exception:
         return 0
 
 
-# ====== 메인 OCR 클래스 ====== #
+# ====== 메인 OCR 클래스 (ONNX Runtime 사용) ====== #
 class OWStatsRecognizer:
-    def __init__(self, cropper=None, ckpt_path="checkpoints/score_number_net.pt"):
+    def __init__(
+        self,
+        cropper=None,
+        ckpt_path: str = "checkpoints/score_number_net.onnx",
+    ):
+        """
+        ckpt_path: ONNX 파일 경로 (예: checkpoints/score_number_net.onnx)
+        """
         self.cropper = cropper or OWScoreboardCropper()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.model = ScoreNumberNet().to(self.device)
-        self.model.eval()
 
         if not os.path.exists(ckpt_path):
             raise FileNotFoundError(ckpt_path)
 
-        ckpt = torch.load(ckpt_path, map_location=self.device)
-        state_dict = ckpt.get("model_state", ckpt)
-        self.model.load_state_dict(state_dict)
+        # ONNX Runtime 세션 생성
+        self.session = ort.InferenceSession(
+            ckpt_path,
+            providers=["CPUExecutionProvider"],
+        )
+
+        # 입력/출력 이름 자동으로 추출
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
 
         self.stat_keys = ["kills", "assists", "deaths", "damage", "heal", "mitig"]
 
-        print("[INFO] CNN checkpoint loaded:", ckpt_path)
+        print("[INFO] ONNX checkpoint loaded:", ckpt_path)
 
     def _crop_from_norm(self, img_norm, box):
         x0, y0, x1, y1 = box
         return img_norm[y0:y1, x0:x1]
 
-    def _ocr(self, crop):
+    def _ocr(self, crop) -> int:
+        """
+        단일 스탯 박스에 대한 OCR
+        """
         try:
-            tensor = preprocess_crop_to_tensor(crop).to(self.device)
+            x = preprocess_crop_to_input(crop)
         except RuntimeError:
             return 0
 
-        with torch.no_grad():
-            logits = self.model(tensor)
-        return decode_digits(logits)
+        # ONNX 추론
+        outputs = self.session.run(
+            [self.output_name],
+            {self.input_name: x},
+        )[0]  # shape: (1, MAX_LEN, NUM_CLASSES)
+
+        return decode_digits(outputs)
 
     def read_all(self, img):
+        """
+        img: BGR 전체 스코어보드 이미지
+        return: {"blue": [ {kills,...}, ... ], "red": [ ... ] }
+        """
         boxes = self.cropper.get_player_boxes(img)
-        img_norm = self.cropper.normalize_image(img)   # 반드시 여기서 crop!!
+        img_norm = self.cropper.normalize_image(img)
 
         result = {"blue": [], "red": []}
 
@@ -152,17 +161,17 @@ class OWStatsRecognizer:
         return result
 
 
-
-# -------- 사용 예시 --------
+# -------- 간단 테스트 --------
 if __name__ == "__main__":
-    img_path = r"testdata/test1.png"
+    img_path = r"test1.png"
     img = cv2.imread(img_path)
 
     cropper = OWScoreboardCropper()
-    recognizer = OWStatsRecognizer(cropper=cropper,
-                                   ckpt_path="checkpoints/score_number_net.pt")
+    recognizer = OWStatsRecognizer(
+        cropper=cropper,
+        ckpt_path="checkpoints/score_number_net.onnx",
+    )
 
     stats = recognizer.read_all(img)
     print("blue:", stats["blue"])
     print("red:", stats["red"])
-    # recognizer.debug_single_cell(img, team="blue", player_idx=0, stat_key="damage")
