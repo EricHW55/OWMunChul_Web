@@ -1,0 +1,12 @@
+# Python
+backend/.venv/
+**/__pycache__/
+*.pyc
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+
+# 기타 환경 변수
+.env
+
