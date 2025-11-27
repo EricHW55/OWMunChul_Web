@@ -119,6 +119,7 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
     return (
         <div className="bg-slate-800/50 backdrop-blur rounded-2xl shadow-2xl p-6 mb-8 border border-slate-700">
             <div className="flex flex-col items-center gap-4">
+<<<<<<< HEAD
                 {/* 붙여넣기 안내 */}
                 {pasteReady && !selectedFile && (
                     <div className="w-full bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-700/50 rounded-lg p-3 mb-2">
@@ -148,6 +149,15 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
                         <div className="text-xs text-slate-600 mt-2">
                             스크린샷을 복사한 후 이 페이지 어디서나 Ctrl+V
                         </div>
+=======
+                <label className="w-full cursor-pointer">
+                    <div className="border-2 border-dashed border-slate-600 rounded-xl p-8 hover:border-orange-400 transition-all text-center bg-slate-900/30">
+                        <Upload className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+                        <div className="text-slate-300 mb-2 font-medium">
+                            {selectedFile ? selectedFile.name : '클릭하거나 드래그하여 업로드'}
+                        </div>
+                        <div className="text-sm text-slate-500">PNG, JPG 최대 10MB</div>
+>>>>>>> b5998ea588ec5ef1b44a63bf79004a62a7929a38
                     </div>
                     <input
                         type="file"
@@ -160,6 +170,7 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
                 {/* 미리보기 */}
                 {preview && (
                     <div className="w-full max-w-2xl">
+<<<<<<< HEAD
                         <div className="relative">
                             <img
                                 src={preview}
@@ -176,6 +187,13 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
                                 ×
                             </button>
                         </div>
+=======
+                        <img
+                            src={preview}
+                            alt="Preview"
+                            className="w-full h-auto max-h-80 object-contain mx-auto rounded-lg shadow-lg border border-slate-700"
+                        />
+>>>>>>> b5998ea588ec5ef1b44a63bf79004a62a7929a38
                     </div>
                 )}
 
