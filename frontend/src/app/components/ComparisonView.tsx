@@ -13,16 +13,6 @@ export function ComparisonView({ result }: ComparisonViewProps) {
     const blueTeam = result.blue_team;
     const redTeam = result.red_team;
 
-    const getPerformanceScore = (prob: number): string => {
-        return `${prob.toFixed(2)}인분`;
-    };
-
-    const getBarPosition = (blueProb: number, redProb: number): number => {
-        const total = blueProb + redProb;
-        if (total === 0) return 50;
-        return (blueProb / total) * 100;
-    };
-
     return (
         <div className="space-y-6">
             {/* 팀 평균 */}
@@ -57,90 +47,86 @@ export function ComparisonView({ result }: ComparisonViewProps) {
                     <h3 className="text-2xl font-bold text-white">1 vs 1 매치업</h3>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {blueTeam.map((bluePlayer, idx) => {
                         const redPlayer = redTeam[idx];
-                        const barPos = getBarPosition(
-                            bluePlayer.win_probability,
-                            redPlayer.win_probability
-                        );
+                        const blueProb = bluePlayer.win_probability;
+                        const redProb = redPlayer.win_probability;
+                        const total = blueProb + redProb;
+
+                        // 비율 계산 (0으로 나누기 방지)
+                        const bluePercent = total > 0 ? (blueProb / total) * 100 : 50;
+                        const redPercent = total > 0 ? (redProb / total) * 100 : 50;
 
                         return (
                             <div
                                 key={idx}
-                                className="bg-slate-900/50 rounded-xl p-4 border border-slate-700"
+                                className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition"
                             >
-                                {/* 영웅 이름 및 인분 */}
-                                <div className="grid grid-cols-3 gap-4 mb-3">
-                                    {/* 블루 플레이어 */}
-                                    <div className="text-left">
-                                        <div className="text-blue-400 font-bold text-lg capitalize">
+                                <div className="flex items-center gap-3">
+                                    {/* 블루 플레이어 (왼쪽) */}
+                                    <div className="flex-1 text-left">
+                                        <div className="text-blue-300 font-bold text-lg capitalize truncate">
                                             {bluePlayer.hero.replace(/_/g, ' ')}
                                         </div>
-                                        <div className="text-blue-300 text-2xl font-bold">
-                                            {getPerformanceScore(bluePlayer.win_probability)}
+                                        <div className="text-blue-400 text-xl font-bold">
+                                            {blueProb.toFixed(2)}인분
                                         </div>
                                     </div>
 
-                                    {/* 중앙 VS */}
-                                    <div className="flex items-center justify-center">
-                                        <div className="text-slate-500 font-bold text-sm">VS</div>
+                                    {/* 비교 바 (중앙) */}
+                                    <div className="flex-[2] flex items-center gap-2">
+                                        {/* 블루 바 */}
+                                        <div className="flex-1 h-10 bg-slate-700 rounded-l-lg overflow-hidden flex items-center justify-end">
+                                            <div
+                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 flex items-center justify-end pr-2"
+                                                style={{ width: `${bluePercent}%` }}
+                                            >
+                                                {bluePercent > 30 && (
+                                                    <span className="text-white font-bold text-sm">
+                            {bluePercent.toFixed(0)}%
+                          </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* 중앙 구분선 */}
+                                        <div className="w-0.5 h-12 bg-white/50"></div>
+
+                                        {/* 레드 바 */}
+                                        <div className="flex-1 h-10 bg-slate-700 rounded-r-lg overflow-hidden flex items-center justify-start">
+                                            <div
+                                                className="h-full bg-gradient-to-l from-red-500 to-red-600 transition-all duration-500 flex items-center justify-start pl-2"
+                                                style={{ width: `${redPercent}%` }}
+                                            >
+                                                {redPercent > 30 && (
+                                                    <span className="text-white font-bold text-sm">
+                            {redPercent.toFixed(0)}%
+                          </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    {/* 레드 플레이어 */}
-                                    <div className="text-right">
-                                        <div className="text-red-400 font-bold text-lg capitalize">
+                                    {/* 레드 플레이어 (오른쪽) */}
+                                    <div className="flex-1 text-right">
+                                        <div className="text-red-300 font-bold text-lg capitalize truncate">
                                             {redPlayer.hero.replace(/_/g, ' ')}
                                         </div>
-                                        <div className="text-red-300 text-2xl font-bold">
-                                            {getPerformanceScore(redPlayer.win_probability)}
+                                        <div className="text-red-400 text-xl font-bold">
+                                            {redProb.toFixed(2)}인분
                                         </div>
-                                    </div>
-                                </div>
-
-                                {/* 비교 바 */}
-                                <div className="relative h-3 bg-slate-700 rounded-full overflow-hidden mb-3">
-                                    <div
-                                        className="absolute top-0 left-0 h-full bg-blue-500"
-                                        style={{ width: `${barPos}%` }}
-                                    />
-                                    <div
-                                        className="absolute top-0 right-0 h-full bg-red-500"
-                                        style={{ width: `${100 - barPos}%` }}
-                                    />
-                                    {/* 중앙 인디케이터 */}
-                                    <div
-                                        className="absolute top-1/2 -translate-y-1/2 w-1 h-6 bg-white shadow-lg"
-                                        style={{ left: `${barPos}%` }}
-                                    />
-                                </div>
-
-                                {/* 스탯 정보 */}
-                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                    {/* 블루 스탯 */}
-                                    <div className="space-y-1 text-slate-300">
-                                        <div>
-                                            K/D/A: {bluePlayer.kills}/{bluePlayer.deaths}/
-                                            {bluePlayer.assists}
-                                        </div>
-                                        <div>DMG: {bluePlayer.damage.toLocaleString()}</div>
-                                        <div>HEAL: {bluePlayer.heal.toLocaleString()}</div>
-                                    </div>
-
-                                    {/* 레드 스탯 */}
-                                    <div className="space-y-1 text-slate-300 text-right">
-                                        <div>
-                                            {redPlayer.kills}/{redPlayer.deaths}/{redPlayer.assists}{' '}
-                                            :K/D/A
-                                        </div>
-                                        <div>{redPlayer.damage.toLocaleString()} :DMG</div>
-                                        <div>{redPlayer.heal.toLocaleString()} :HEAL</div>
                                     </div>
                                 </div>
                             </div>
                         );
                     })}
                 </div>
+            </div>
+
+            {/* 팁 */}
+            <div className="text-center text-slate-400 text-sm">
+                💡 막대 그래프가 길수록 해당 플레이어의 기여도가 높습니다
             </div>
         </div>
     );

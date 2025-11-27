@@ -19,7 +19,7 @@ export default function Home() {
                     <div className="flex items-center justify-center gap-3 mb-3">
                         <Target className="w-12 h-12 text-orange-400" />
                         <h1 className="text-5xl font-bold text-white">
-                            OW Win Predictor
+                            누가 죄인인가?
                         </h1>
                     </div>
                     <p className="text-blue-200 text-lg">

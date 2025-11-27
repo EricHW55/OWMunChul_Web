@@ -159,12 +159,12 @@ export function UploadSection({ onResult, onError }: UploadSectionProps) {
 
                 {/* 미리보기 */}
                 {preview && (
-                    <div className="w-full max-w-2xl">
+                    <div className="w-full max-w-md">
                         <div className="relative">
                             <img
                                 src={preview}
                                 alt="Preview"
-                                className="w-full h-auto max-h-80 object-contain mx-auto rounded-lg shadow-lg border border-slate-700"
+                                className="w-full h-auto max-h-48 object-contain mx-auto rounded-lg shadow-lg border border-slate-700"
                             />
                             <button
                                 onClick={() => {
