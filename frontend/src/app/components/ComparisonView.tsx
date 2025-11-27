@@ -47,7 +47,7 @@ export function ComparisonView({ result }: ComparisonViewProps) {
                     <h3 className="text-2xl font-bold text-white">1 vs 1 매치업</h3>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {blueTeam.map((bluePlayer, idx) => {
                         const redPlayer = redTeam[idx];
                         const blueProb = bluePlayer.win_probability;
@@ -63,60 +63,58 @@ export function ComparisonView({ result }: ComparisonViewProps) {
                                 key={idx}
                                 className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 hover:border-slate-600 transition"
                             >
-                                <div className="flex items-center gap-3">
-                                    {/* 블루 플레이어 (왼쪽) */}
-                                    <div className="flex-1 text-left">
-                                        <div className="text-blue-300 font-bold text-lg capitalize truncate">
+                                {/* 상단: 영웅 이름과 인분 */}
+                                <div className="grid grid-cols-3 gap-4 mb-3">
+                                    {/* 블루 플레이어 */}
+                                    <div className="text-left">
+                                        <div className="text-blue-300 font-bold text-base capitalize">
                                             {bluePlayer.hero.replace(/_/g, ' ')}
                                         </div>
-                                        <div className="text-blue-400 text-xl font-bold">
+                                        <div className="text-blue-400 text-lg font-bold">
                                             {blueProb.toFixed(2)}인분
                                         </div>
                                     </div>
 
-                                    {/* 비교 바 (중앙) */}
-                                    <div className="flex-[2] flex items-center gap-2">
-                                        {/* 블루 바 */}
-                                        <div className="flex-1 h-10 bg-slate-700 rounded-l-lg overflow-hidden flex items-center justify-end">
-                                            <div
-                                                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 flex items-center justify-end pr-2"
-                                                style={{ width: `${bluePercent}%` }}
-                                            >
-                                                {bluePercent > 30 && (
-                                                    <span className="text-white font-bold text-sm">
-                            {bluePercent.toFixed(0)}%
-                          </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* 중앙 구분선 */}
-                                        <div className="w-0.5 h-12 bg-white/50"></div>
-
-                                        {/* 레드 바 */}
-                                        <div className="flex-1 h-10 bg-slate-700 rounded-r-lg overflow-hidden flex items-center justify-start">
-                                            <div
-                                                className="h-full bg-gradient-to-l from-red-500 to-red-600 transition-all duration-500 flex items-center justify-start pl-2"
-                                                style={{ width: `${redPercent}%` }}
-                                            >
-                                                {redPercent > 30 && (
-                                                    <span className="text-white font-bold text-sm">
-                            {redPercent.toFixed(0)}%
-                          </span>
-                                                )}
-                                            </div>
-                                        </div>
+                                    {/* 중앙 VS */}
+                                    <div className="flex items-center justify-center">
+                                        <span className="text-slate-500 font-bold">VS</span>
                                     </div>
 
-                                    {/* 레드 플레이어 (오른쪽) */}
-                                    <div className="flex-1 text-right">
-                                        <div className="text-red-300 font-bold text-lg capitalize truncate">
+                                    {/* 레드 플레이어 */}
+                                    <div className="text-right">
+                                        <div className="text-red-300 font-bold text-base capitalize">
                                             {redPlayer.hero.replace(/_/g, ' ')}
                                         </div>
-                                        <div className="text-red-400 text-xl font-bold">
+                                        <div className="text-red-400 text-lg font-bold">
                                             {redProb.toFixed(2)}인분
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* 하단: 비교 바 */}
+                                <div className="relative h-8 bg-slate-700 rounded-full overflow-hidden">
+                                    {/* 블루 바 (왼쪽에서 시작) */}
+                                    <div
+                                        className="absolute left-0 top-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-700 flex items-center justify-center"
+                                        style={{ width: `${bluePercent}%` }}
+                                    >
+                    <span className="text-white font-bold text-sm drop-shadow-lg">
+                      {bluePercent.toFixed(0)}%
+                    </span>
+                                    </div>
+
+                                    {/* 레드 바 (오른쪽에서 시작) */}
+                                    <div
+                                        className="absolute right-0 top-0 h-full bg-gradient-to-l from-red-500 to-red-600 transition-all duration-700 flex items-center justify-center"
+                                        style={{ width: `${redPercent}%` }}
+                                    >
+                    <span className="text-white font-bold text-sm drop-shadow-lg">
+                      {redPercent.toFixed(0)}%
+                    </span>
+                                    </div>
+
+                                    {/* 중앙 구분선 */}
+                                    <div className="absolute left-1/2 top-0 w-1 h-full bg-white/30 -translate-x-1/2"></div>
                                 </div>
                             </div>
                         );
