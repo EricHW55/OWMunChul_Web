@@ -16,10 +16,10 @@ export default function HeroRow({
     const blueScore = blue?.win_probability ?? 0;
     const redScore = red?.win_probability ?? 0;
     const total = blueScore + redScore || 1;
-    const markerPos = blueScore / total;
 
-    const markerColor =
-        blueScore >= redScore ? '#60a5fa' : '#f97373';
+    // 각 팀의 비율 계산 (전체 막대 기준)
+    const blueWidth = (blueScore / total) * 100;
+    const redWidth = (redScore / total) * 100;
 
     return (
         <div className={styles.row}>
@@ -37,15 +37,21 @@ export default function HeroRow({
             <div className={styles.barWrapper}>
                 <div className={styles.barLine} />
 
-                <div
-                    className={styles.marker}
-                    style={{ left: `${markerPos * 100}%` }}
-                >
+                {/* 파란팀 바 */}
+                {blue && (
                     <div
-                        className={styles.markerDot}
-                        style={{ backgroundColor: markerColor }}
+                        className={styles.blueBar}
+                        style={{ width: `${blueWidth}%` }}
                     />
-                </div>
+                )}
+
+                {/* 빨간팀 바 */}
+                {red && (
+                    <div
+                        className={styles.redBar}
+                        style={{ width: `${redWidth}%` }}
+                    />
+                )}
             </div>
 
             <button

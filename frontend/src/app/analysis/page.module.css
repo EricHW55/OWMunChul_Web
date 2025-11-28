@@ -9,13 +9,13 @@
     font-size: 1.8rem;
     font-weight: 700;
     margin-bottom: 0.3rem;
-    color: #0f172a; /* 제목 더 진하게 */
+    color: #0f172a;
 }
 
 .subtitle {
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
-    color: #0f172a; /* 제목 더 진하게 */
+    color: #0f172a;
 }
 
 .loadingText {
@@ -80,20 +80,63 @@
     inset: 0;
     background: #1f2933;
     border-radius: 999px;
+    overflow: hidden;
 }
 
 .marker {
     position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    top: 0;
+    bottom: 0;
+    border-radius: 999px;
 }
 
 .markerDot {
-    width: 14px;
-    height: 14px;
+    width: 100%;
+    height: 100%;
     border-radius: 999px;
-    border: 2px solid #111827;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease-in-out;
+}
+
+/* 파란팀 바 - 왼쪽부터 색칠 */
+.blueBar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(to right, rgba(96, 165, 250, 0.7), rgba(96, 165, 250, 0.4));
+    border-radius: 999px;
+    transform-origin: left;
+    animation: fillBlueBar 0.9s ease-out forwards;
+}
+
+@keyframes fillBlueBar {
+    0% {
+        transform: scaleX(0);
+    }
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+/* 빨간팀 바 - 오른쪽부터 색칠 */
+.redBar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(to left, rgba(249, 115, 115, 0.7), rgba(249, 115, 115, 0.4));
+    border-radius: 999px;
+    transform-origin: right;
+    animation: fillRedBar 0.9s ease-out forwards;
+}
+
+@keyframes fillRedBar {
+    0% {
+        transform: scaleX(0);
+    }
+    100% {
+        transform: scaleX(1);
+    }
 }
 
 /* 상세 영역 */
@@ -124,13 +167,12 @@
     justify-content: center;
 }
 
-/* 여기가 핵심 */
 .heroImage {
-    width: 90px;        /* 가로 크기 고정 (원하면 120~180 사이로 조절) */
-    height: 90px;       /* 세로도 고정 */
+    width: 90px;
+    height: 90px;
     border-radius: 1rem;
-    object-fit: cover;   /* 정사각형 안에 꽉 채우되 비율 유지 */
-    flex-shrink: 0;      /* 옆 텍스트 때문에 눌리지 않도록 */
+    object-fit: cover;
+    flex-shrink: 0;
 }
 
 .heroName {
@@ -214,7 +256,6 @@
         grid-template-columns: 1fr;
     }
 }
-
 
 .headerRow {
     display: flex;
