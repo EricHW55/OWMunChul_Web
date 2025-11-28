@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { predictFromImage } from '../lib/api';
 import type { PredictionResult } from '../types/overwatch';
@@ -12,6 +12,8 @@ export default function UploadSection() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
 
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const selected = e.target.files?.[0];
         if (!selected) return;
@@ -19,6 +21,7 @@ export default function UploadSection() {
         if (!selected.type.startsWith('image/')) {
             setError('이미지 파일만 업로드할 수 있습니다.');
             setFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
@@ -26,9 +29,40 @@ export default function UploadSection() {
         setError(null);
     }
 
+    // Ctrl + V 붙여넣기 (그대로 유지)
+    useEffect(() => {
+        function handlePaste(e: ClipboardEvent) {
+            if (!e.clipboardData) return;
+            const items = e.clipboardData.items;
+
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        const pastedFile = new File([blob], 'pasted-image.png', {
+                            type: blob.type,
+                        });
+                        setFile(pastedFile);
+                        setError(null);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('paste', handlePaste);
+        return () => window.removeEventListener('paste', handlePaste);
+    }, []);
+
+    function handleClearFile() {
+        setFile(null);
+        setError(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
     async function handleAnalyzeClick() {
         if (!file) {
-            setError('먼저 스크린샷 이미지를 업로드해주세요.');
+            setError('먼저 스크린샷 이미지를 업로드하거나 붙여넣기 하세요.');
             return;
         }
 
@@ -38,7 +72,6 @@ export default function UploadSection() {
 
             const result: PredictionResult = await predictFromImage(file);
 
-            // 세션 스토리지에 저장 → /analysis 페이지에서 읽어서 사용
             if (typeof window !== 'undefined') {
                 sessionStorage.setItem('ow_prediction', JSON.stringify(result));
             }
@@ -56,19 +89,36 @@ export default function UploadSection() {
         <section className={styles.section}>
             <h2 className={styles.title}>스코어보드 스크린샷 업로드</h2>
             <p className={styles.description}>
-                Overwatch 경기 중 스코어보드 화면을 캡처해서 업로드하면,
-                각 플레이어가 팀 승리에 얼마나 기여하고 있는지 분석해줍니다.
+                파일을 업로드하거나, Overwatch 스크린샷을 캡처한 후
+                <strong> Ctrl + V </strong> 로 바로 붙여넣을 수 있습니다.
             </p>
 
             <div className={styles.uploadBox}>
                 <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleFileChange}
                     className={styles.fileInput}
                 />
-                {file && (
-                    <p className={styles.fileName}>선택된 파일: {file.name}</p>
+
+                {file ? (
+                    <div className={styles.fileInfoRow}>
+                        <p className={styles.fileName}>
+                            선택된 이미지: <strong>{file.name}</strong>
+                        </p>
+                        <button
+                            type="button"
+                            className={styles.clearButton}
+                            onClick={handleClearFile}
+                        >
+                            삭제
+                        </button>
+                    </div>
+                ) : (
+                    <p className={styles.placeholder}>
+                        여기에 파일을 선택하거나 Ctrl + V 로 붙여넣기
+                    </p>
                 )}
             </div>
 

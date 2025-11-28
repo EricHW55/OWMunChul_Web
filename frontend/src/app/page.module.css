@@ -2,7 +2,7 @@
     max-width: 960px;
     margin: 0 auto;
     padding: 2rem 1.5rem 3rem;
-    color: #e5e7eb;
+    color: #0f172a; /* 전체 텍스트 기본색: 진한 네이비 */
 }
 
 .hero {
@@ -13,21 +13,19 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
+    color: #0f172a; /* 제목 더 진하게 */
 }
 
 .subtitle {
-    font-size: 0.95rem;
-    color: #9ca3af;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #4b5563; /* 회색에서 조금 더 진한 톤 */
     margin-bottom: 1rem;
 }
 
 .steps {
     list-style: none;
     padding-left: 0;
-    font-size: 0.9rem;
-    color: #d1d5db;
-}
-
-.steps li {
-    margin-bottom: 0.25rem;
+    font-size: 1rem;
+    color: #374151; /* 리스트도 살짝 진하게 */
 }

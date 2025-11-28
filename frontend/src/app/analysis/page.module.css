@@ -9,12 +9,13 @@
     font-size: 1.8rem;
     font-weight: 700;
     margin-bottom: 0.3rem;
+    color: #0f172a; /* 제목 더 진하게 */
 }
 
 .subtitle {
     font-size: 0.9rem;
-    color: #9ca3af;
     margin-bottom: 1.5rem;
+    color: #0f172a; /* 제목 더 진하게 */
 }
 
 .loadingText {

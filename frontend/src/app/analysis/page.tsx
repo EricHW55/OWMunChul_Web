@@ -48,7 +48,7 @@ function AnalysisContainer() {
     return (
         <main className={styles.container}>
             <h1 className={styles.title}>분석 결과</h1>
-            <p className={styles.subtitle}>각 팀의 인분 그래프입니다.</p>
+            <p className={styles.subtitle}>각 팀의 기여도 그래프입니다.</p>
 
             <GraphSection players={result.players} />
 
