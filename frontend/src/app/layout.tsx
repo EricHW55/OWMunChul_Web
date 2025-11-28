@@ -2,7 +2,7 @@
 import './globals.css';
 
 export const metadata = {
-    title: 'Overwatch Win Probability',
+    title: '옵문철',
     description: 'Overwatch scoreboard 분석기',
 };
 
