@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { predictFromImage, explainPlayer } from '../lib/api';
+import { explainPlayer } from '../lib/api';
 import type { PredictionResult } from '../types/overwatch';
 import { AnalysisProvider, useAnalysis } from './AnalysisContext';
 import GraphSection from './components/GraphSection';
@@ -14,7 +14,6 @@ function AnalysisContainer() {
     const [result, setResult] = useState<PredictionResult | null>(null);
     const { selectedIndex, setSelectedIndex, setExplain } = useAnalysis();
 
-    // 세션에서 데이터 로드
     useEffect(() => {
         const raw = sessionStorage.getItem('ow_prediction');
         if (!raw) {
@@ -28,7 +27,6 @@ function AnalysisContainer() {
         }
     }, [router, setSelectedIndex]);
 
-    // selectedIndex 바뀌면 explain 요청
     useEffect(() => {
         if (selectedIndex == null) return;
         (async () => {
@@ -45,10 +43,28 @@ function AnalysisContainer() {
         );
     }
 
+    function handleBackClick() {
+        // 필요하면 여기서 sessionStorage.clear()나 특정 키만 삭제도 가능
+        // sessionStorage.removeItem('ow_prediction');
+        router.push('/');   // 홈(업로드 페이지)로 이동
+    }
+
     return (
         <main className={styles.container}>
-            <h1 className={styles.title}>분석 결과</h1>
-            <p className={styles.subtitle}>각 팀의 기여도 그래프입니다.</p>
+            <div className={styles.headerRow}>
+                <div>
+                    <h1 className={styles.title}>분석 결과</h1>
+                    <p className={styles.subtitle}>각 팀의 기여도 그래프입니다.</p>
+                </div>
+
+                <button
+                    type="button"
+                    className={styles.backButton}
+                    onClick={handleBackClick}
+                >
+                    ← 다시 업로드하기
+                </button>
+            </div>
 
             <GraphSection players={result.players} />
 
