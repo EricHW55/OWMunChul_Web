@@ -1,0 +1,33 @@
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+    color: #e5e7eb;
+}
+
+.hero {
+    margin-bottom: 1.5rem;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+}
+
+.steps {
+    list-style: none;
+    padding-left: 0;
+    font-size: 0.9rem;
+    color: #d1d5db;
+}
+
+.steps li {
+    margin-bottom: 0.25rem;
+}

@@ -1,0 +1,212 @@
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+    color: #e5e7eb;
+}
+
+.title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1.5rem;
+}
+
+.loadingText {
+    font-size: 0.95rem;
+    color: #9ca3af;
+}
+
+.graphSection {
+    margin-bottom: 2rem;
+    padding: 1rem 1rem 1.2rem;
+    border-radius: 1rem;
+    border: 1px solid #374151;
+    background: #111827;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+
+.heroLabel {
+    min-width: 180px;
+    text-align: left;
+    font-size: 0.9rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 999px;
+    transition: background 0.15s ease-in-out, transform 0.05s ease-in-out;
+}
+
+.heroLabel:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.blueLabel {
+    color: #60a5fa;
+}
+
+.redLabel {
+    color: #f97373;
+    text-align: right;
+}
+
+.selectedHero {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.barWrapper {
+    flex: 1;
+    position: relative;
+    height: 10px;
+}
+
+.barLine {
+    position: absolute;
+    inset: 0;
+    background: #1f2933;
+    border-radius: 999px;
+}
+
+.marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.markerDot {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    border: 2px solid #111827;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 상세 영역 */
+
+.detailSection {
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid #374151;
+    background: #020617;
+}
+
+.heroDetailHeader {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.heroImageWrapper {
+    width: 72px;
+    height: 72px;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid #4b5563;
+    background: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.heroImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.heroName {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.heroTeam {
+    font-size: 0.85rem;
+    color: #9ca3af;
+}
+
+.heroScore {
+    font-size: 0.95rem;
+    color: #e5e7eb;
+}
+
+.featureColumns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+.featureTitle {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.featureEmpty {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+.featureList {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.featureItem {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.5rem;
+    background: #020617;
+    border: 1px solid #1f2937;
+    margin-bottom: 0.3rem;
+}
+
+.featureName {
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+}
+
+.featureValue {
+    color: #9ca3af;
+}
+
+.featureImpact {
+    color: #4ade80;
+    font-size: 0.8rem;
+}
+
+.featureImpactNegative {
+    color: #f87171;
+    font-size: 0.8rem;
+}
+
+/* 모바일 대응 */
+
+@media (max-width: 768px) {
+    .heroLabel {
+        min-width: 130px;
+        font-size: 0.8rem;
+    }
+
+    .featureColumns {
+        grid-template-columns: 1fr;
+    }
+}

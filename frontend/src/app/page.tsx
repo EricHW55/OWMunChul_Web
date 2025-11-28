@@ -1,53 +1,25 @@
-// app/page.tsx
-'use client';
+import UploadSection from './components/UploadSection';
+import styles from './page.module.css';
 
-import React, { useState } from 'react';
-import { Target } from 'lucide-react';
-import { UploadSection } from './components/UploadSection';
-import { ComparisonView } from './components/ComparisonView';
-import type { PredictionResult } from './types/overwatch';
-
-export default function Home() {
-    const [result, setResult] = useState<PredictionResult | null>(null);
-    const [error, setError] = useState<string | null>(null);
-
+export default function HomePage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4 md:p-8">
-            <div className="max-w-7xl mx-auto">
-                {/* 헤더 */}
-                <div className="text-center mb-8">
-                    <div className="flex items-center justify-center gap-3 mb-3">
-                        <Target className="w-12 h-12 text-orange-400" />
-                        <h1 className="text-5xl font-bold text-white">
-                            누가 죄인인가?
-                        </h1>
-                    </div>
-                    <p className="text-blue-200 text-lg">
-                        스코어보드 스크린샷을 업로드하여 승률을 예측하세요
-                    </p>
-                </div>
+        <main className={styles.container}>
+            <section className={styles.hero}>
+                <h1 className={styles.title}>Overwatch 승리 기여도 분석기</h1>
+                <p className={styles.subtitle}>
+                    스코어보드 한 장으로, 각 플레이어가 팀 승리에 몇 인분 기여하고 있는지
+                    확인해보세요.
+                </p>
 
-                {/* 업로드 섹션 */}
-                <UploadSection
-                    onResult={(res) => {
-                        setResult(res);
-                        setError(null);
-                    }}
-                    onError={(msg) => {
-                        setError(msg);
-                        if (msg) setResult(null);
-                    }}
-                />
+                <ol className={styles.steps}>
+                    <li>1. Overwatch에서 스코어보드 화면을 캡처합니다.</li>
+                    <li>2. 아래 업로드 섹션에 이미지를 업로드합니다.</li>
+                    <li>3. <strong>분석하기</strong> 버튼을 누르면, 분석 페이지로 이동합니다.</li>
+                    <li>4. 그래프에서 영웅을 클릭하면, 어떤 스탯 때문에 그렇게 평가되었는지 볼 수 있습니다.</li>
+                </ol>
+            </section>
 
-                {error && (
-                    <div className="mt-4 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200 backdrop-blur">
-                        {error}
-                    </div>
-                )}
-
-                {/* 결과 표시 */}
-                {result && <ComparisonView result={result} />}
-            </div>
-        </div>
+            <UploadSection />
+        </main>
     );
 }
