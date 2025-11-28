@@ -36,9 +36,7 @@ class OWScoreboardCropper:
         self.DMG_N = self._norm_roi(self.DMG_X0, self.DMG_Y0,
                                     self.DMG_X1, self.DMG_Y1)
 
-    # ============================================================
-    #  기본 유틸
-    # ============================================================
+    
     def normalize_image(self, img):
         """모든 입력 이미지를 1920×1080 기준으로 맞춘다."""
         h, w = img.shape[:2]
@@ -66,9 +64,8 @@ class OWScoreboardCropper:
             xs.append((sx0, sx1))
         return xs
 
-    # ============================================================
-    #  메인 로직
-    # ============================================================
+    
+    
     def get_player_boxes(self, img):
         """
         입력 이미지(2K/1K/등 상관없음)를 1080p로 맞춘 뒤 좌표 반환.
@@ -139,9 +136,7 @@ class OWScoreboardCropper:
 
         return result
 
-    # ============================================================
-    #  디버그
-    # ============================================================
+    
     def draw_debug(self, img, boxes):
         debug = self.normalize_image(img).copy()
 
@@ -170,7 +165,7 @@ class OWScoreboardCropper:
         return debug
 
 
-# -------- 사용 예시 --------
+
 if __name__ == "__main__":
     img_path = r"testdata/test1.png"  # 2K든 1K든 상관 없음
     img = cv2.imread(img_path)

@@ -16,15 +16,6 @@ TARGET_H = 32
 TARGET_W = 128
 
 
-# ====== (참고용) 원래 CNN 구조 ====== #
-# ONNX 추론만 쓸 거라, 실제 서버 코드에서는 이 클래스를 안 써도 되지만
-# 모델 구조를 기록해두는 용도로 남겨둬도 됨.
-# 필요 없으면 통째로 삭제해도 무방.
-#
-# class ScoreNumberNet(nn.Module):
-#     ...
-
-
 # ====== 전처리 (ONNX 입력용) ====== #
 def preprocess_crop_to_input(crop: np.ndarray) -> np.ndarray:
     """

@@ -35,10 +35,6 @@ class OWFeatureTransformer:
         set(re.sub(r"\d+$", "", h) for h in RAW_HERO_NAMES)
     )
 
-    # -------- 역할군 매핑 (네가 직접 채우면 됨) --------
-    # 기본 역할군: tank / damage / support
-    # 필요하면 'flex', 'main_dps', 'off_dps', 'main_heal', 'flex_support' 같은 서브 역할도
-    # ROLE_SUB_MAP 쪽에 네가 채워서 쓸 수 있게 틀만 만들어 둠.
     TANK_NAME = [
         'dva', 'doomfist', 'ramattra', 'wrecking_ball', 'roadhog', 'mauga', 
         'sigma', 'orisa', 'winston', 'zarya', 'junker_queen', 'hazard'
@@ -120,8 +116,6 @@ class OWFeatureTransformer:
             "hero_norm",
         ]
 
-    # ---------- 내부 유틸 ----------
-
     def _normalize_hero_name(self, name: str) -> str:
         """'ashe2' -> 'ashe', 'lucio3' -> 'lucio' 처럼 숫자 suffix 제거."""
         if not isinstance(name, str) or name == "":
@@ -140,7 +134,6 @@ class OWFeatureTransformer:
                 df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
         return df
 
-    # ---------- 메인 처리 ----------
 
     def _add_hero_onehot(self, df: pd.DataFrame) -> pd.DataFrame:
         # 영웅 이름 정규화
@@ -266,7 +259,6 @@ class OWFeatureTransformer:
 
         return df
 
-    # ---------- 외부에서 쓰는 메인 API ----------
 
     def transform(self, df: pd.DataFrame, drop_id_cols: bool = True) -> pd.DataFrame:
         """

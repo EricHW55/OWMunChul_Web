@@ -83,7 +83,7 @@ class OWHeroTemplateClassifier:
 
 
 
-# -------- 간단 사용 예시 --------
+
 if __name__ == "__main__":
     img_path = r"dataset/blue/2025-11-25 030028.png"
     img = cv2.imread(img_path)
