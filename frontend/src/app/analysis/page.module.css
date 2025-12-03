@@ -282,3 +282,47 @@
     color: #111827;
     border-color: #9ca3af;
 }
+
+/* 오른쪽 텍스트 블록 */
+.heroTextBlock {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* 이름 + 인분 한 줄 정렬 */
+.heroTitleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+/* 인분 점수(인라인 버전) */
+.heroScoreInline {
+    font-size: 0.95rem;
+    color: #e5e7eb; /* 밝은 회색 */
+}
+
+/* 줄글 요약 */
+.heroLlmSummary {
+    font-size: 0.9rem;
+    color: #ffffff;           /* 흰 글씨 */
+    line-height: 1.5;
+    margin-top: 0.25rem;
+}
+
+.heroNameRow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.heroPortion {
+    font-size: 1.1rem;
+    color: #ffffff;
+    opacity: 0.95;
+}

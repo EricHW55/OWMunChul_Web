@@ -13,7 +13,7 @@ export default function HeroDetail() {
     if (selectedIndex == null) {
         return (
             <section className={styles.detailSection}>
-                <p>영웅을 선택하면 세부 평가를 볼 수 있습니다.</p>
+                <p>영웅 이름을 클릭하면 세부 평가를 볼 수 있습니다.</p>
             </section>
         );
     }
@@ -28,6 +28,7 @@ export default function HeroDetail() {
 
     return (
         <section className={styles.detailSection}>
+            {/* 🔹 헤더: 아이콘 + (이름/인분/요약) */}
             <div className={styles.heroDetailHeader}>
                 <img
                     src={heroImg(explain.hero)}
@@ -35,17 +36,22 @@ export default function HeroDetail() {
                     className={styles.heroImage}
                 />
 
-                <div>
-                    <h2 className={styles.heroName}>
-                        {explain.hero}{' '}
+                <div className={styles.heroTextBlock}>
+                    {/* 🔹 이름 + (팀) + 인분 모두 한 줄 */}
+                    <div className={styles.heroNameRow}>
+                        <span className={styles.heroName}>{explain.hero}</span>
                         <span className={styles.heroTeam}>
               ({explain.team === 'blue' ? '블루' : '레드'})
             </span>
-                    </h2>
+                        <span className={styles.heroPortion}>
+              · {explain.win_probability.toFixed(2)} 인분
+            </span>
+                    </div>
 
-                    <p className={styles.heroScore}>
-                        점수: <strong>{explain.win_probability.toFixed(2)} 인분</strong>
-                    </p>
+                    {/* 요약 문장 */}
+                    {explain.llm_summary && (
+                        <p className={styles.heroLlmSummary}>{explain.llm_summary}</p>
+                    )}
                 </div>
             </div>
 
@@ -53,9 +59,9 @@ export default function HeroDetail() {
             <div className={styles.featureColumns}>
                 {/* Positive */}
                 <div>
-                    <h3 className={styles.featureTitle}>좋은 기여</h3>
+                    <h3 className={styles.featureTitle}>좋게 평가한 항목</h3>
                     {explain.top_positive.map((f) => (
-                        <div key={f.feature} className={styles.featureItem}>
+                        <div key={f.feature_key} className={styles.featureItem}>
                             <span>{f.feature}</span>
                             <span>값 {f.value.toFixed(2)}</span>
                             <span className={styles.featureImpact}>
@@ -67,9 +73,9 @@ export default function HeroDetail() {
 
                 {/* Negative */}
                 <div>
-                    <h3 className={styles.featureTitle}>나쁜 기여</h3>
+                    <h3 className={styles.featureTitle}>나쁘게 평가한 항목</h3>
                     {explain.top_negative.map((f) => (
-                        <div key={f.feature} className={styles.featureItem}>
+                        <div key={f.feature_key} className={styles.featureItem}>
                             <span>{f.feature}</span>
                             <span>값 {f.value.toFixed(2)}</span>
                             <span className={styles.featureImpactNegative}>

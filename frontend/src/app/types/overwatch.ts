@@ -13,7 +13,8 @@ export interface PredictionResult {
 
 // /explain 결과 타입
 export interface ExplainFeature {
-    feature: string;
+    feature_key: string;  // match_total_kills 같은 원래 피처 이름
+    feature: string;      // "경기 전체 총 처치 수" 같은 한국어 라벨
     value: number;
     shap_value: number;
 }
@@ -28,4 +29,5 @@ export interface ExplainResult {
     bias: number;
     top_positive: ExplainFeature[];
     top_negative: ExplainFeature[];
+    llm_summary: string;        // 🔹 LLM 한줄 요약 추가
 }
