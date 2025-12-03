@@ -10,3 +10,4 @@ xgboost==2.0.2
 onnxruntime==1.19.0
 
 openai>=1.55.0
+python-dotenv>=1.0.1

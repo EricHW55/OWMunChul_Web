@@ -13,6 +13,9 @@ from read_number_cnn_model import OWStatsRecognizer
 from hero_classification import OWHeroTemplateClassifier
 from feature_transformer import OWFeatureTransformer
 
+# 🔹 LLM 설명기
+from llm_explainer import OWAlignmentExplainer, FEATURE_LABELS
+
 app = FastAPI(title="Overwatch Win Probability Predictor")
 
 # CORS 설정
@@ -29,6 +32,7 @@ cropper = OWScoreboardCropper()
 stats_rec = OWStatsRecognizer(cropper=cropper)
 hero_cls = OWHeroTemplateClassifier(cropper=cropper, threshold=0.5)
 transformer = OWFeatureTransformer()
+llm_explainer = OWAlignmentExplainer()  # gpt-4.1-mini 기반 설명기
 
 # 모델 로드
 try:
@@ -47,6 +51,11 @@ last_contribs = None        # np.ndarray, shape (n_samples, n_features + 1)
 
 # 정규화 방법: "sum5" 또는 "softmax"
 NORMALIZATION_METHOD = "sum5"
+
+
+def feature_to_korean_name(feat: str) -> str:
+    """피처 이름을 한글 라벨로 변환 (없으면 원래 이름 그대로)."""
+    return FEATURE_LABELS.get(feat, feat)
 
 
 def extract_rows_from_image(img):
@@ -123,7 +132,7 @@ def predict_win_probability(df_raw: pd.DataFrame) -> pd.DataFrame:
     raw_win_p = model.predict_proba(X)[:, 1]
 
     # 팀별 정규화 (합이 5가 되도록)
-    norm_win_p = normalize_team_scores(raw_win_p, method=NORMALIZATION_METHOD)
+    norm_win_p = normalize_team_scores(raw_win_p, method= NORMALIZATION_METHOD)
 
     heroes = df_raw["hero"].astype(str).values
 
@@ -204,7 +213,7 @@ async def predict(file: UploadFile = File(...)):
 def explain_player(player_index: int, top_k: int = 5):
     """
     마지막 /predict 요청 기준으로,
-    특정 플레이어(player_index)의 SHAP 기반 feature 기여도 반환.
+    특정 플레이어(player_index)의 SHAP 기반 feature 기여도 + LLM 요약 반환.
 
     player_index: 0~4 (blue), 5~9 (red)
     """
@@ -229,31 +238,45 @@ def explain_player(player_index: int, top_k: int = 5):
         .sort_values("shap_value", ascending=False)
     )
 
-    # 승률을 올린/깎은 feature 나누기
+    # 승률을 올린/깎은 feature 나누기 (한국어 라벨 포함)
     pos = df_local[df_local["shap_value"] > 0].head(top_k)
-    neg = df_local[df_local["shap_value"] < 0].tail(top_k)  # 정렬이 desc라 tail이 가장 음수쪽
+    neg = df_local[df_local["shap_value"] < 0].tail(top_k)  # desc 정렬이므로 tail이 가장 음수쪽
 
-    top_positive = [
-        {
-            "feature": str(r["feature"]),
+    top_positive = []
+    for _, r in pos.iterrows():
+        feat_key = str(r["feature"])
+        top_positive.append({
+            "feature_key": feat_key,                          # 원래 피처 이름
+            "feature": feature_to_korean_name(feat_key),      # 한글 라벨
             "value": float(r["value"]),
             "shap_value": float(r["shap_value"]),
-        }
-        for _, r in pos.iterrows()
-    ]
+        })
 
-    top_negative = [
-        {
-            "feature": str(r["feature"]),
+    top_negative = []
+    for _, r in neg.iterrows():
+        feat_key = str(r["feature"])
+        top_negative.append({
+            "feature_key": feat_key,
+            "feature": feature_to_korean_name(feat_key),
             "value": float(r["value"]),
             "shap_value": float(r["shap_value"]),
-        }
-        for _, r in neg.iterrows()
-    ]
+        })
 
     hero_name = str(last_result.iloc[player_index]["hero"])
     win_p = float(last_result.iloc[player_index]["win_proba"])
     raw_win_p = float(last_result.iloc[player_index]["raw_win_proba"])
+
+    # 🔹 LLM 요약 생성 (실패해도 API 전체는 살아있게 try/except)
+    try:
+        llm_result = llm_explainer.explain_from_df_local(
+            hero_name=hero_name,
+            win_prob=raw_win_p,   # raw 승률 기준 설명 (원하면 win_p로 바꿔도 됨)
+            df_local=df_local,
+            top_k=top_k,
+        )
+        llm_summary = llm_result["summary"]
+    except Exception as e:
+        llm_summary = f"LLM explanation unavailable: {e}"
 
     return JSONResponse({
         "success": True,
@@ -265,6 +288,7 @@ def explain_player(player_index: int, top_k: int = 5):
         "bias": bias,
         "top_positive": top_positive,
         "top_negative": top_negative,
+        "llm_summary": llm_summary,
     })
 
 
