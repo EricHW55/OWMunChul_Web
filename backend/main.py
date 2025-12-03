@@ -16,15 +16,16 @@ from feature_transformer import OWFeatureTransformer
 # 🔹 LLM 설명기
 from llm_explainer import OWAlignmentExplainer, FEATURE_LABELS
 
-app = FastAPI(title="Overwatch Win Probability Predictor")
+app = FastAPI(title="Overwatch MunChul")
 
 # CORS 설정
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 필요하면 도메인 좁혀도 됨
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware(
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 )
 
 # 전역 객체 초기화
@@ -66,19 +67,21 @@ def extract_rows_from_image(img):
     rows = []
     for team in ("blue", "red"):
         for idx, (slot_st, slot_he) in enumerate(zip(stats[team], heroes[team])):
-            rows.append({
-                "src_team": "unknown",
-                "src_image": "uploaded",
-                "team": team,
-                "slot_index": idx,
-                "hero": slot_he["hero_name"],
-                "kills": slot_st["kills"],
-                "assists": slot_st["assists"],
-                "deaths": slot_st["deaths"],
-                "damage": slot_st["damage"],
-                "heal": slot_st["heal"],
-                "mitig": slot_st["mitig"],
-            })
+            rows.append(
+                {
+                    "src_team": "unknown",
+                    "src_image": "uploaded",
+                    "team": team,
+                    "slot_index": idx,
+                    "hero": slot_he["hero_name"],
+                    "kills": slot_st["kills"],
+                    "assists": slot_st["assists"],
+                    "deaths": slot_st["deaths"],
+                    "damage": slot_st["damage"],
+                    "heal": slot_st["heal"],
+                    "mitig": slot_st["mitig"],
+                }
+            )
 
     return pd.DataFrame(rows)
 
@@ -93,6 +96,7 @@ def normalize_team_scores(win_p: np.ndarray, method: str = "sum5") -> np.ndarray
     red = win_p[5:10].copy()
 
     if method == "softmax":
+
         def softmax(x):
             x = x - np.max(x)
             ex = np.exp(x)
@@ -132,22 +136,24 @@ def predict_win_probability(df_raw: pd.DataFrame) -> pd.DataFrame:
     raw_win_p = model.predict_proba(X)[:, 1]
 
     # 팀별 정규화 (합이 5가 되도록)
-    norm_win_p = normalize_team_scores(raw_win_p, method= NORMALIZATION_METHOD)
+    norm_win_p = normalize_team_scores(raw_win_p, method=NORMALIZATION_METHOD)
 
     heroes = df_raw["hero"].astype(str).values
 
-    result = pd.DataFrame({
-        "hero": heroes,
-        "win_proba": norm_win_p,
-        "raw_win_proba": raw_win_p,
-    })
+    result = pd.DataFrame(
+        {
+            "hero": heroes,
+            "win_proba": norm_win_p,   # 몇인분 점수
+            "raw_win_proba": raw_win_p,  # 실제 승률
+        }
+    )
 
     # 🔹 XGBoost 내장 SHAP (Tree SHAP) 계산
     booster = model.get_booster()
     dmat = xgb.DMatrix(X.values, feature_names=feature_cols)
     contribs = booster.predict(dmat, pred_contribs=True)  # (n_samples, n_features + 1)
 
-    # 전역 상태 업데이트 (나중에 /explain에서 사용)
+    # 전역 상태 업데이트 (나중에 /explain 및 /explain_llm 에서 사용)
     last_features = X
     last_result = result
     last_contribs = contribs
@@ -191,17 +197,16 @@ async def predict(file: UploadFile = File(...)):
         # JSON 형식으로 변환 (hero, win_probability만)
         players = []
         for idx, row in result.iterrows():
-            players.append({
-                "index": idx,  # 0~4: blue, 5~9: red
-                "team": "blue" if idx < 5 else "red",
-                "hero": row["hero"],
-                "win_probability": round(float(row["win_proba"]), 4),
-            })
+            players.append(
+                {
+                    "index": idx,  # 0~4: blue, 5~9: red
+                    "team": "blue" if idx < 5 else "red",
+                    "hero": row["hero"],
+                    "win_probability": round(float(row["win_proba"]), 4),
+                }
+            )
 
-        return JSONResponse({
-            "success": True,
-            "players": players,
-        })
+        return JSONResponse({"success": True, "players": players})
 
     except HTTPException:
         raise
@@ -213,16 +218,22 @@ async def predict(file: UploadFile = File(...)):
 def explain_player(player_index: int, top_k: int = 5):
     """
     마지막 /predict 요청 기준으로,
-    특정 플레이어(player_index)의 SHAP 기반 feature 기여도 + LLM 요약 반환.
+    특정 플레이어(player_index)의 SHAP 기반 feature 기여도만 반환
+    (LLM 요약 없음, 빠른 응답용)
 
     player_index: 0~4 (blue), 5~9 (red)
     """
     if last_result is None or last_features is None or last_contribs is None:
-        raise HTTPException(status_code=400, detail="No prediction available. Call /predict first.")
+        raise HTTPException(
+            status_code=400, detail="No prediction available. Call /predict first."
+        )
 
     n_players = last_result.shape[0]
     if player_index < 0 or player_index >= n_players:
-        raise HTTPException(status_code=400, detail=f"player_index must be between 0 and {n_players - 1}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"player_index must be between 0 and {n_players - 1}",
+        )
 
     # 해당 플레이어의 SHAP 값
     row_contrib = last_contribs[player_index, :-1]  # bias 제외
@@ -230,11 +241,13 @@ def explain_player(player_index: int, top_k: int = 5):
     row_feat_vals = last_features.iloc[player_index].values
 
     df_local = (
-        pd.DataFrame({
-            "feature": feature_cols,
-            "value": row_feat_vals,
-            "shap_value": row_contrib,
-        })
+        pd.DataFrame(
+            {
+                "feature": feature_cols,
+                "value": row_feat_vals,
+                "shap_value": row_contrib,
+            }
+        )
         .sort_values("shap_value", ascending=False)
     )
 
@@ -245,32 +258,90 @@ def explain_player(player_index: int, top_k: int = 5):
     top_positive = []
     for _, r in pos.iterrows():
         feat_key = str(r["feature"])
-        top_positive.append({
-            "feature_key": feat_key,                          # 원래 피처 이름
-            "feature": feature_to_korean_name(feat_key),      # 한글 라벨
-            "value": float(r["value"]),
-            "shap_value": float(r["shap_value"]),
-        })
+        top_positive.append(
+            {
+                "feature_key": feat_key,  # 원래 피처 이름
+                "feature": feature_to_korean_name(feat_key),  # 한글 라벨
+                "value": float(r["value"]),
+                "shap_value": float(r["shap_value"]),
+            }
+        )
 
     top_negative = []
     for _, r in neg.iterrows():
         feat_key = str(r["feature"])
-        top_negative.append({
-            "feature_key": feat_key,
-            "feature": feature_to_korean_name(feat_key),
-            "value": float(r["value"]),
-            "shap_value": float(r["shap_value"]),
-        })
+        top_negative.append(
+            {
+                "feature_key": feat_key,
+                "feature": feature_to_korean_name(feat_key),
+                "value": float(r["value"]),
+                "shap_value": float(r["shap_value"]),
+            }
+        )
 
     hero_name = str(last_result.iloc[player_index]["hero"])
-    win_p = float(last_result.iloc[player_index]["win_proba"])
-    raw_win_p = float(last_result.iloc[player_index]["raw_win_proba"])
+    win_p = float(last_result.iloc[player_index]["win_proba"])       # 몇인분 점수
+    raw_win_p = float(last_result.iloc[player_index]["raw_win_proba"])  # 실제 승률
 
-    # 🔹 LLM 요약 생성 (실패해도 API 전체는 살아있게 try/except)
+    return JSONResponse(
+        {
+            "success": True,
+            "player_index": player_index,
+            "team": "blue" if player_index < 5 else "red",
+            "hero": hero_name,
+            "win_probability": round(win_p, 4),        # 몇인분
+            "raw_win_probability": round(raw_win_p, 4),  # 실제 승률
+            "bias": bias,
+            "top_positive": top_positive,
+            "top_negative": top_negative,
+        }
+    )
+
+
+@app.get("/explain_llm")
+def explain_player_llm(player_index: int, top_k: int = 5):
+    """
+    마지막 /predict 기준으로 특정 플레이어에 대해
+    LLM 한 줄 요약만 반환하는 엔드포인트.
+    - 프론트에서는 /explain으로 숫자 먼저 띄우고
+      그 다음 /explain_llm으로 요약만 받아서 붙이면 됨.
+    """
+    if last_result is None or last_features is None or last_contribs is None:
+        raise HTTPException(
+            status_code=400, detail="No prediction available. Call /predict first."
+        )
+
+    n_players = last_result.shape[0]
+    if player_index < 0 or player_index >= n_players:
+        raise HTTPException(
+            status_code=400,
+            detail=f"player_index must be between 0 and {n_players - 1}",
+        )
+
+    # df_local 다시 구성 (SHAP)
+    row_contrib = last_contribs[player_index, :-1]
+    row_feat_vals = last_features.iloc[player_index].values
+
+    df_local = (
+        pd.DataFrame(
+            {
+                "feature": feature_cols,
+                "value": row_feat_vals,
+                "shap_value": row_contrib,
+            }
+        )
+        .sort_values("shap_value", ascending=False)
+    )
+
+    hero_name = str(last_result.iloc[player_index]["hero"])
+    portion_score = float(last_result.iloc[player_index]["win_proba"])       # 몇인분
+    raw_win_p = float(last_result.iloc[player_index]["raw_win_proba"])       # 승률
+
     try:
         llm_result = llm_explainer.explain_from_df_local(
             hero_name=hero_name,
-            win_prob=raw_win_p,   # raw 승률 기준 설명 (원하면 win_p로 바꿔도 됨)
+            win_prob=raw_win_p,
+            portion_score=portion_score,
             df_local=df_local,
             top_k=top_k,
         )
@@ -278,29 +349,22 @@ def explain_player(player_index: int, top_k: int = 5):
     except Exception as e:
         llm_summary = f"LLM explanation unavailable: {e}"
 
-    return JSONResponse({
-        "success": True,
-        "player_index": player_index,
-        "team": "blue" if player_index < 5 else "red",
-        "hero": hero_name,
-        "win_probability": round(win_p, 4),
-        "raw_win_probability": round(raw_win_p, 4),
-        "bias": bias,
-        "top_positive": top_positive,
-        "top_negative": top_negative,
-        "llm_summary": llm_summary,
-    })
+    return JSONResponse(
+        {
+            "success": True,
+            "player_index": player_index,
+            "llm_summary": llm_summary,
+        }
+    )
 
 
 @app.get("/health")
 def health_check():
     """헬스 체크"""
-    return {
-        "status": "healthy",
-        "model_loaded": model is not None
-    }
+    return {"status": "healthy", "model_loaded": model is not None}
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

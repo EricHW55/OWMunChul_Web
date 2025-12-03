@@ -1,7 +1,7 @@
 # llm_explainer.py
 
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -14,7 +14,7 @@ load_dotenv()
 client = OpenAI()
 
 # 피처 이름 → 한글 설명 매핑 (필요하면 프로젝트에 맞게 채워 넣기)
-FEATURE_LABELS = {
+FEATURE_LABELS: Dict[str, str] = {
     # 기본 스탯
     "win": "승리 여부",
     "kills": "처치 수",
@@ -116,14 +116,14 @@ FEATURE_LABELS = {
 class OWAlignmentExplainer:
     """
     XGBoost SHAP 결과(df_local)를 바탕으로
-    LLM에게 '왜 이런 승률이 나왔는지' 1~2문장으로 요약하게 하는 클래스.
+    LLM에게 '왜 이런 승률/인분이 나왔는지' 1~2문장으로 요약하게 하는 클래스.
     """
 
     def __init__(
         self,
         model_name: str = "gpt-4.1-mini",
         top_k: int = 3,
-        feature_labels: dict | None = None,
+        feature_labels: Optional[dict] = None,
     ) -> None:
         self.model_name = model_name
         self.top_k = top_k
@@ -137,7 +137,7 @@ class OWAlignmentExplainer:
     def build_reason_sentences(
         self,
         df_local: pd.DataFrame,
-        top_k: int | None = None,
+        top_k: Optional[int] = None,
     ) -> Tuple[List[str], List[str]]:
         """
         df_local: columns = [feature, value, shap_value]
@@ -178,17 +178,28 @@ class OWAlignmentExplainer:
         self,
         hero_name: str,
         win_prob: float,
+        portion_score: Optional[float],
         pos_reasons: List[str],
         neg_reasons: List[str],
     ) -> str:
         """
         LLM에 보낼 user 프롬프트 생성
+        - win_prob: 모델이 예측한 실제 승률 (0~1)
+        - portion_score: 인분 점수 (같은 팀 5명의 합이 5가 되도록 정규화된 값)
         """
         prob_percent = win_prob * 100.0
         lines: List[str] = []
 
         lines.append(f"[영웅] {hero_name}")
-        lines.append(f"[예측 승률] {prob_percent:.1f}%\n")
+        lines.append(f"[예측 승률] {prob_percent:.1f}%")
+
+        if portion_score is not None:
+            lines.append(
+                f"[인분 점수] {portion_score:.2f} 인분 "
+                "(같은 팀 5명의 인분 점수 합은 항상 5가 되도록 정규화되어 있습니다.)"
+            )
+
+        lines.append("")  # 빈 줄
 
         lines.append("[승률을 올린 요인]")
         if pos_reasons:
@@ -205,7 +216,7 @@ class OWAlignmentExplainer:
             lines.append("- 두드러지는 부정적 요인은 없습니다.")
 
         lines.append(
-            "\n위 정보를 바탕으로, 왜 이런 승률 예측이 나왔는지 한국어로 1~2문장으로 짧게 요약해줘. "
+            "\n위 정보를 바탕으로, 왜 이런 승률과 인분 점수가 나왔는지 한국어로 1~2문장으로 짧게 요약해줘. "
             "새로운 내용을 상상해서 만들지 말고, 위에 있는 정보만 이용해."
         )
 
@@ -217,8 +228,8 @@ class OWAlignmentExplainer:
         """
         system_prompt = """
 너는 오버워치 경기 데이터를 해설하는 분석가이다.
-입력으로 주어지는 승률 예측과 feature 설명만 사용해서,
-해당 영웅의 조합/상황이 왜 이런 승률을 가지는지 한국어로 1~2문장으로 짧게 설명한다.
+입력으로 주어지는 승률 예측, 인분 점수, feature 설명만 사용해서,
+해당 영웅의 조합/상황이 왜 이런 결과를 가지는지 한국어로 1~2문장으로 짧게 설명한다.
 
 규칙:
 - 1~2문장으로만 출력한다.
@@ -243,22 +254,30 @@ class OWAlignmentExplainer:
         self,
         hero_name: str,
         win_prob: float,
+        portion_score: Optional[float],
         df_local: pd.DataFrame,
-        top_k: int | None = None,
+        top_k: Optional[int] = None,
     ) -> dict:
         """
-        hero_name, win_prob, df_local(feature/value/shap_value)를 받아
+        hero_name, win_prob, portion_score, df_local(feature/value/shap_value)를 받아
         - pos/neg reason 리스트
         - LLM 요약 문장
         을 dict로 반환.
         """
         pos_reasons, neg_reasons = self.build_reason_sentences(df_local, top_k=top_k)
-        prompt = self.build_prompt(hero_name, win_prob, pos_reasons, neg_reasons)
+        prompt = self.build_prompt(
+            hero_name=hero_name,
+            win_prob=win_prob,
+            portion_score=portion_score,
+            pos_reasons=pos_reasons,
+            neg_reasons=neg_reasons,
+        )
         summary = self.call_llm(prompt)
 
         return {
             "hero": hero_name,
             "win_prob": float(win_prob),
+            "portion_score": float(portion_score) if portion_score is not None else None,
             "pos_reasons": pos_reasons,
             "neg_reasons": neg_reasons,
             "summary": summary,
