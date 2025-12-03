@@ -1,88 +1,90 @@
+// src/app/analysis/AnalysisContext.tsx
 'use client';
 
-import {
+import React, {
     createContext,
     useContext,
-    useEffect,
-    useRef,
     useState,
-    type ReactNode,
+    ReactNode,
 } from 'react';
-
 import type {
     PlayerPrediction,
     ExplainResult,
 } from '../types/overwatch';
 
-import { explainPlayer } from '../lib/api';
-
-interface AnalysisContextValue {
-    players: PlayerPrediction[];
-    setPlayers: (players: PlayerPrediction[]) => void;
+type AnalysisContextType = {
+    players: PlayerPrediction[] | null;
+    setPlayers: (players: PlayerPrediction[] | null) => void;
 
     selectedIndex: number | null;
-    setSelectedIndex: (i: number | null) => void;
+    setSelectedIndex: (idx: number | null) => void;
 
     explain: ExplainResult | null;
-}
+    setExplain: (data: ExplainResult | null) => void;
 
-const AnalysisContext = createContext<AnalysisContextValue | null>(null);
+    llmSummary: string | null;
+    setLlmSummary: (summary: string | null) => void;
+
+    loadingExplain: boolean;
+    setLoadingExplain: (loading: boolean) => void;
+    loadingLlm: boolean;
+    setLoadingLlm: (loading: boolean) => void;
+
+    selectPlayer: (idx: number) => void;
+
+    // 캐시 접근용
+    llmCache: Record<number, string>;
+    updateLlmCache: (idx: number, summary: string) => void;
+};
+
+const AnalysisContext = createContext<AnalysisContextType | undefined>(
+    undefined,
+);
 
 export function AnalysisProvider({ children }: { children: ReactNode }) {
-    const [players, setPlayers] = useState<PlayerPrediction[]>([]);
+    const [players, setPlayers] = useState<PlayerPrediction[] | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [explain, setExplain] = useState<ExplainResult | null>(null);
+    const [llmSummary, setLlmSummary] = useState<string | null>(null);
 
-    // 🔹 player_index → ExplainResult 캐시
-    const explainCache = useRef<Map<number, ExplainResult>>(new Map());
+    const [loadingExplain, setLoadingExplain] = useState(false);
+    const [loadingLlm, setLoadingLlm] = useState(false);
 
-    // 새 이미지를 업로드해서 players가 바뀌면 캐시/선택 초기화
-    useEffect(() => {
-        explainCache.current.clear();
-        setSelectedIndex(null);
+    // [핵심] LLM 응답을 저장할 캐시 객체 (인덱스: 요약문)
+    const [llmCache, setLlmCache] = useState<Record<number, string>>({});
+
+    const selectPlayer = (idx: number) => {
+        // 같은 영웅을 다시 누른 경우 무시하고 싶다면 여기서 처리 가능하나,
+        // 보통은 그냥 다시 렌더링해도 무방함.
+        if (selectedIndex === idx) return;
+
+        setSelectedIndex(idx);
+
+        // 설명/요약 화면 초기화 (로딩 효과를 위해)
         setExplain(null);
-    }, [players]);
+        setLlmSummary(null);
+    };
 
-    // 선택된 인덱스가 바뀔 때 /explain 호출 or 캐시 사용
-    useEffect(() => {
-        if (selectedIndex == null) {
-            setExplain(null);
-            return;
-        }
+    const updateLlmCache = (idx: number, summary: string) => {
+        setLlmCache((prev) => ({ ...prev, [idx]: summary }));
+    };
 
-        // 1) 이미 받아놓은 값 있으면 그걸 사용
-        const cached = explainCache.current.get(selectedIndex);
-        if (cached) {
-            setExplain(cached);
-            return;
-        }
-
-        // 2) 없으면 서버에서 가져오기
-        let cancelled = false;
-
-        (async () => {
-            try {
-                const data = await explainPlayer(selectedIndex);
-                if (!cancelled) {
-                    explainCache.current.set(selectedIndex, data);
-                    setExplain(data);
-                }
-            } catch (err) {
-                console.error('explainePlayer error', err);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedIndex]);
-
-    const value: AnalysisContextValue = {
+    const value: AnalysisContextType = {
         players,
         setPlayers,
         selectedIndex,
         setSelectedIndex,
         explain,
+        setExplain,
+        llmSummary,
+        setLlmSummary,
+        loadingExplain,
+        setLoadingExplain,
+        loadingLlm,
+        setLoadingLlm,
+        selectPlayer,
+        llmCache,
+        updateLlmCache,
     };
 
     return (
@@ -95,7 +97,9 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
 export function useAnalysis() {
     const ctx = useContext(AnalysisContext);
     if (!ctx) {
-        throw new Error('useAnalysis must be used within AnalysisProvider');
+        throw new Error(
+            'useAnalysis는 AnalysisProvider 안에서만 사용할 수 있습니다.',
+        );
     }
     return ctx;
 }

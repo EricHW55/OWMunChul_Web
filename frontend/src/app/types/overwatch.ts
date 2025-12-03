@@ -13,8 +13,8 @@ export interface PredictionResult {
 
 // /explain 결과 타입
 export interface ExplainFeature {
-    feature_key: string;  // match_total_kills 같은 원래 피처 이름
-    feature: string;      // "경기 전체 총 처치 수" 같은 한국어 라벨
+    feature_key: string;  // 백엔드에서 오는 원래 피처 이름
+    feature: string;      // 한글 라벨
     value: number;
     shap_value: number;
 }
@@ -24,10 +24,16 @@ export interface ExplainResult {
     player_index: number;
     team: 'blue' | 'red';
     hero: string;
-    win_probability: number;
-    raw_win_probability: number;
+    win_probability: number;      // 인분 점수
+    raw_win_probability: number;  // 실제 승률 (0~1)
     bias: number;
     top_positive: ExplainFeature[];
     top_negative: ExplainFeature[];
-    llm_summary: string;        // 🔹 LLM 한줄 요약 추가
+}
+
+// /explain_llm 결과 타입
+export interface ExplainLLMResult {
+    success: boolean;
+    player_index: number;
+    llm_summary: string;
 }

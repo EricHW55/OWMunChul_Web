@@ -2,6 +2,7 @@
 import type {
     PredictionResult,
     ExplainResult,
+    ExplainLLMResult,
 } from '../types/overwatch';
 
 const API_BASE_URL =
@@ -52,5 +53,28 @@ export async function explainPlayer(
     }
 
     const data = (await res.json()) as ExplainResult;
+    return data;
+}
+
+/**
+ * 특정 플레이어에 대한 LLM 한줄 요약만 요청
+ */
+export async function explainPlayerLLM(
+    playerIndex: number,
+    topK = 5,
+): Promise<ExplainLLMResult> {
+    const url = new URL('/explain_llm', API_BASE_URL);
+    url.searchParams.set('player_index', String(playerIndex));
+    url.searchParams.set('top_k', String(topK));
+
+    const res = await fetch(url.toString(), {
+        method: 'GET',
+    });
+
+    if (!res.ok) {
+        throw new Error(`서버 에러: ${res.status}`);
+    }
+
+    const data = (await res.json()) as ExplainLLMResult;
     return data;
 }

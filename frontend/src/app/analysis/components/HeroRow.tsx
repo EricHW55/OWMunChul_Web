@@ -1,3 +1,4 @@
+// src/app/analysis/components/HeroRow.tsx
 'use client';
 
 import type { PlayerPrediction } from '../../types/overwatch';
@@ -11,13 +12,12 @@ export default function HeroRow({
     blue?: PlayerPrediction;
     red?: PlayerPrediction;
 }) {
-    const { selectedIndex, setSelectedIndex } = useAnalysis();
+    const { selectedIndex, selectPlayer } = useAnalysis();
 
     const blueScore = blue?.win_probability ?? 0;
     const redScore = red?.win_probability ?? 0;
     const total = blueScore + redScore || 1;
 
-    // 각 팀의 비율 계산 (전체 막대 기준)
     const blueWidth = (blueScore / total) * 100;
     const redWidth = (redScore / total) * 100;
 
@@ -28,7 +28,7 @@ export default function HeroRow({
                 className={`${styles.heroLabel} ${styles.blueLabel} ${
                     selectedIndex === blue?.index ? styles.selectedHero : ''
                 }`}
-                onClick={() => blue && setSelectedIndex(blue.index)}
+                onClick={() => blue && selectPlayer(blue.index)}
                 disabled={!blue}
             >
                 {blue ? `${blue.hero}: ${blueScore.toFixed(2)} 인분` : ''}
@@ -37,7 +37,6 @@ export default function HeroRow({
             <div className={styles.barWrapper}>
                 <div className={styles.barLine} />
 
-                {/* 파란팀 바 */}
                 {blue && (
                     <div
                         className={styles.blueBar}
@@ -45,7 +44,6 @@ export default function HeroRow({
                     />
                 )}
 
-                {/* 빨간팀 바 */}
                 {red && (
                     <div
                         className={styles.redBar}
@@ -59,7 +57,7 @@ export default function HeroRow({
                 className={`${styles.heroLabel} ${styles.redLabel} ${
                     selectedIndex === red?.index ? styles.selectedHero : ''
                 }`}
-                onClick={() => red && setSelectedIndex(red.index)}
+                onClick={() => red && selectPlayer(red.index)}
                 disabled={!red}
             >
                 {red ? `${red.hero}: ${redScore.toFixed(2)} 인분` : ''}
