@@ -20,12 +20,11 @@ app = FastAPI(title="Overwatch MunChul")
 
 # CORS 설정
 app.add_middleware(
-    CORSMiddleware(
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    CORSMiddleware,
+    allow_origins=["*"],  # 나중에 실제 도메인으로 좁혀도 됨
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 전역 객체 초기화
