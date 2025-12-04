@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import xgboost as xgb
+import asyncio  # 🔹 백그라운드 태스크 실행용
 
 from crop_coordinates_1k import OWScoreboardCropper
 from read_number_cnn_model import OWStatsRecognizer
@@ -15,8 +16,45 @@ from feature_transformer import OWFeatureTransformer
 
 # 🔹 LLM 설명기
 from llm_explainer import OWAlignmentExplainer, FEATURE_LABELS
+# 🔹 오버워치 배경지식 동기화기
+from knowledge_sync import OWKnowledgeSync
 
-app = FastAPI(title="Overwatch MunChul")
+
+# 🔹 오버워치 배경지식 동기화기 (구글 문서 → 로컬 텍스트 파일)
+# url=None 이면 knowledge_sync 내부에서 OW_KNOWLEDGE_URL 환경변수를 사용
+knowledge_sync = OWKnowledgeSync(
+    path="overwatch_knowledge.txt",  # llm_explainer에서 읽는 파일 이름과 맞춰줌
+    interval_sec=600,                # 10분마다 한 번씩 동기화 (원하면 조절 가능)
+)
+
+
+async def lifespan(app: FastAPI):
+    """
+    서버 시작/종료 시 실행되는 로직.
+    - OW_KNOWLEDGE_URL이 설정되어 있다면, 오버워치 배경지식을
+      구글 공유 문서에서 읽어와 overwatch_knowledge.txt로 저장하고,
+      이후 주기적으로 동기화하는 백그라운드 태스크를 실행한다.
+    """
+    if knowledge_sync.enabled:
+        try:
+            # 서버 시작 시 1회 동기화 시도
+            knowledge_sync.sync_once()
+            print("[OW_KNOWLEDGE] Initial sync succeeded.")
+        except Exception as e:
+            print(f"[OW_KNOWLEDGE] Initial sync failed: {e}")
+
+        # 주기적 동기화 루프를 백그라운드 태스크로 실행
+        asyncio.create_task(knowledge_sync.run_loop())
+    else:
+        print("[OW_KNOWLEDGE] OW_KNOWLEDGE_URL not set. Background sync disabled.")
+
+    # 👇 여기까지가 startup 시점, 이후는 shutdown 시점
+    yield
+
+    # 필요하면 여기서 종료 정리 작업 수행 (지금은 없음)
+
+
+app = FastAPI(title="Overwatch MunChul", lifespan=lifespan)
 
 # CORS 설정
 app.add_middleware(
