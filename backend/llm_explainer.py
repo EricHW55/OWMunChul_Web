@@ -113,6 +113,22 @@ FEATURE_LABELS: Dict[str, str] = {
 }
 
 
+# 🔹 오버워치 배경 지식 로더 추가
+OW_KNOWLEDGE_PATH = "overwatch_knowledge.txt"
+
+def load_ow_knowledge(path: str = OW_KNOWLEDGE_PATH) -> str:
+    """
+    오버워치 관련 배경 지식을 .txt에서 읽어오는 함수.
+    파일이 없으면 빈 문자열을 반환.
+    """
+    if not os.path.exists(path):
+        return ""
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+OW_KNOWLEDGE = load_ow_knowledge()
+
+
 class OWAlignmentExplainer:
     """
     XGBoost SHAP 결과(df_local)를 바탕으로
@@ -181,11 +197,13 @@ class OWAlignmentExplainer:
         portion_score: Optional[float],
         pos_reasons: List[str],
         neg_reasons: List[str],
+        match_summary: Optional[str] = None,
     ) -> str:
         """
         LLM에 보낼 user 프롬프트 생성
         - win_prob: 모델이 예측한 실제 승률 (0~1)
         - portion_score: 인분 점수 (같은 팀 5명의 합이 5가 되도록 정규화된 값)
+        - match_summary: 경기 전체 결과/요약을 한 줄 또는 몇 줄로 정리한 텍스트
         """
         prob_percent = win_prob * 100.0
         lines: List[str] = []
@@ -198,6 +216,12 @@ class OWAlignmentExplainer:
                 f"[인분 점수] {portion_score:.2f} 인분 "
                 "(같은 팀 5명의 인분 점수 합은 항상 5가 되도록 정규화되어 있습니다.)"
             )
+
+        # 🔹 경기 전체 요약(선택)
+        if match_summary:
+            lines.append("")  # 빈 줄
+            lines.append("[경기 전체 요약]")
+            lines.append(match_summary)
 
         lines.append("")  # 빈 줄
 
@@ -228,21 +252,37 @@ class OWAlignmentExplainer:
         """
         system_prompt = """
 너는 오버워치 경기 데이터를 해설하는 분석가이다.
-입력으로 주어지는 승률 예측, 인분 점수, feature 설명만 사용해서,
+입력으로 주어지는 승률 예측, 인분 점수, feature 설명, 경기 전체 요약(각 플레이어의 스탯 정보)을 사용해서,
 해당 영웅의 조합/상황이 왜 이런 결과를 가지는지 한국어로 1~2문장으로 짧게 설명한다.
 
 규칙:
 - 1~2문장으로만 출력한다.
 - 새로운 사실을 상상해서 덧붙이지 않는다.
-- 입력으로 주어진 '요인'을 자연스럽게 요약하는 데 집중한다.
+- 입력으로 주어진 '요인'과 '경기 전체 요약'을 자연스럽게 요약하는 데 집중한다.
 """.strip()
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+        ]
+
+        # 🔹 overatch_knowledge.txt에 저장된 배경 지식을 추가 system 메시지로 넣기
+        if OW_KNOWLEDGE:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "다음은 오버워치 관련 배경 지식이다. "
+                        "맥락 이해를 위해서만 참고하고, 위에서 주어진 수치/피처 설명과 "
+                        "모순되는 내용은 사용하지 마라:\n" + OW_KNOWLEDGE
+                    ),
+                }
+            )
+
+        messages.append({"role": "user", "content": prompt})
 
         resp = client.chat.completions.create(
             model=self.model_name,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
+            messages=messages,
             temperature=0.2,
             max_tokens=160,
         )
@@ -250,16 +290,18 @@ class OWAlignmentExplainer:
 
     # ---------- 외부에서 쓰는 메인 메서드 ----------
 
-    def explain_from_df_local(
+    def explain_from_local_and_match(
         self,
         hero_name: str,
         win_prob: float,
         portion_score: Optional[float],
         df_local: pd.DataFrame,
+        match_summary: Optional[str] = None,
         top_k: Optional[int] = None,
     ) -> dict:
         """
-        hero_name, win_prob, portion_score, df_local(feature/value/shap_value)를 받아
+        hero_name, win_prob, portion_score, df_local(feature/value/shap_value),
+        match_summary(경기 전체 요약 텍스트)를 받아
         - pos/neg reason 리스트
         - LLM 요약 문장
         을 dict로 반환.
@@ -271,6 +313,7 @@ class OWAlignmentExplainer:
             portion_score=portion_score,
             pos_reasons=pos_reasons,
             neg_reasons=neg_reasons,
+            match_summary=match_summary,
         )
         summary = self.call_llm(prompt)
 
@@ -280,5 +323,6 @@ class OWAlignmentExplainer:
             "portion_score": float(portion_score) if portion_score is not None else None,
             "pos_reasons": pos_reasons,
             "neg_reasons": neg_reasons,
+            "match_summary": match_summary,
             "summary": summary,
         }

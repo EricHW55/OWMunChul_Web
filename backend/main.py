@@ -48,6 +48,7 @@ except Exception as e:
 last_features = None        # pandas DataFrame (features[feature_cols])
 last_result = None          # pandas DataFrame ({hero, win_proba, raw_win_proba})
 last_contribs = None        # np.ndarray, shape (n_samples, n_features + 1)
+last_df_raw = None          # 🔹 원본 스코어보드 데이터 (kills, assists, deaths, damage, heal, mitig)
 
 # 정규화 방법: "sum5" 또는 "softmax"
 NORMALIZATION_METHOD = "sum5"
@@ -125,7 +126,10 @@ def predict_win_probability(df_raw: pd.DataFrame) -> pd.DataFrame:
     승률 예측 + 전역 상태 업데이트
     return: DataFrame with columns [hero, win_proba, raw_win_proba]
     """
-    global last_features, last_result, last_contribs
+    global last_features, last_result, last_contribs, last_df_raw
+
+    # 🔹 원본 스코어보드도 저장
+    last_df_raw = df_raw.copy()
 
     # feature 변환
     features = transformer.transform(df_raw, drop_id_cols=True)
@@ -305,7 +309,12 @@ def explain_player_llm(player_index: int, top_k: int = 5):
     - 프론트에서는 /explain으로 숫자 먼저 띄우고
       그 다음 /explain_llm으로 요약만 받아서 붙이면 됨.
     """
-    if last_result is None or last_features is None or last_contribs is None:
+    if (
+        last_result is None
+        or last_features is None
+        or last_contribs is None
+        or last_df_raw is None
+    ):
         raise HTTPException(
             status_code=400, detail="No prediction available. Call /predict first."
         )
@@ -333,15 +342,38 @@ def explain_player_llm(player_index: int, top_k: int = 5):
     )
 
     hero_name = str(last_result.iloc[player_index]["hero"])
-    portion_score = float(last_result.iloc[player_index]["win_proba"])       # 몇인분
+    portion_score = float(last_result.iloc[player_index]["win_proba"])        # 몇인분
     raw_win_p = float(last_result.iloc[player_index]["raw_win_proba"])       # 승률
 
+    # 🔹 경기 전체 스탯을 텍스트로 구성
+    # last_df_raw: columns = [team, hero, kills, assists, deaths, damage, heal, mitig, ...]
+    match_lines = []
+    for idx in range(n_players):
+        row = last_df_raw.iloc[idx]
+        team_str = "블루" if row["team"] == "blue" or idx < 5 else "레드"
+        hero = str(row["hero"])
+        kills = int(row["kills"])
+        assists = int(row["assists"])
+        deaths = int(row["deaths"])
+        damage = int(row["damage"])
+        heal = int(row["heal"])
+        mitig = int(row["mitig"])
+
+        match_lines.append(
+            f"- [{team_str}] {hero}: K {kills}, A {assists}, D {deaths}, "
+            f"DMG {damage}, HEAL {heal}, MIT {mitig}"
+        )
+
+    # 이 문자열이 llm_explainer.build_prompt 의 match_summary 로 들어감
+    match_summary = "\n".join(match_lines)
+
     try:
-        llm_result = llm_explainer.explain_from_df_local(
+        llm_result = llm_explainer.explain_from_local_and_match(
             hero_name=hero_name,
             win_prob=raw_win_p,
             portion_score=portion_score,
             df_local=df_local,
+            match_summary=match_summary,
             top_k=top_k,
         )
         llm_summary = llm_result["summary"]
