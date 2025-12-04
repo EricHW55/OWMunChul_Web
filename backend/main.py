@@ -17,7 +17,7 @@ from feature_transformer import OWFeatureTransformer
 # 🔹 LLM 설명기
 from llm_explainer import OWAlignmentExplainer, FEATURE_LABELS
 # 🔹 오버워치 배경지식 동기화기
-from backend.knowledge_sync import OWKnowledgeSync
+from knowledge_sync import OWKnowledgeSync
 
 
 # 🔹 오버워치 배경지식 동기화기 (구글 문서 → 로컬 텍스트 파일)
