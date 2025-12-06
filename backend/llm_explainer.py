@@ -126,9 +126,6 @@ def load_ow_knowledge(path: str = OW_KNOWLEDGE_PATH) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-OW_KNOWLEDGE = load_ow_knowledge()
-
-
 class OWAlignmentExplainer:
     """
     XGBoost SHAP 결과(df_local)를 바탕으로
@@ -253,10 +250,10 @@ class OWAlignmentExplainer:
         system_prompt = """
 너는 오버워치 경기 데이터를 해설하는 분석가이다.
 입력으로 주어지는 승률 예측, 인분 점수, feature 설명, 경기 전체 요약(각 플레이어의 스탯 정보)을 사용해서,
-해당 영웅의 조합/상황이 왜 이런 결과를 가지는지 한국어로 1~2문장으로 짧게 설명한다.
+해당 영웅의 조합/상황이 왜 이런 결과를 가지는지 한국어로 2~4문장으로 짧게 설명한다.
 
 규칙:
-- 1~2문장으로만 출력한다.
+- 2~4문장으로만 출력한다.
 - 새로운 사실을 상상해서 덧붙이지 않는다.
 - 입력으로 주어진 '요인'과 '경기 전체 요약'을 자연스럽게 요약하는 데 집중한다.
 """.strip()
@@ -265,15 +262,18 @@ class OWAlignmentExplainer:
             {"role": "system", "content": system_prompt},
         ]
 
-        # 🔹 overatch_knowledge.txt에 저장된 배경 지식을 추가 system 메시지로 넣기
-        if OW_KNOWLEDGE:
+        # overatch_knowledge.txt에 저장된 배경 지식을 추가 system 메시지로 넣기
+        # 여기서 매 호출마다 최신 파일 읽기
+        ow_knowledge = load_ow_knowledge()
+        if ow_knowledge:
             messages.append(
                 {
                     "role": "system",
                     "content": (
                         "다음은 오버워치 관련 배경 지식이다. "
+                        "경기 데이터를 보고 배경 지식을 바탕으로 결과를 해석해라. "
                         "맥락 이해를 위해서만 참고하고, 위에서 주어진 수치/피처 설명과 "
-                        "모순되는 내용은 사용하지 마라:\n" + OW_KNOWLEDGE
+                        "모순되는 내용은 사용하지 마라:\n" + ow_knowledge
                     ),
                 }
             )
